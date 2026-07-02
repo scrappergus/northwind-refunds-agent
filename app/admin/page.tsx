@@ -69,20 +69,16 @@ export default function AdminPage() {
   const [convFilter, setConvFilter] = useState("all");
   const [follow, setFollow] = useState(true);
   const [chaosArmed, setChaosArmed] = useState(false);
-  // Deployed with DEMO_ADMIN_TOKEN, this page is opened as /admin?token=…
-  const [token] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (new URLSearchParams(window.location.search).get("token") ?? ""),
-  );
   const [authorized, setAuthorized] = useState(true);
+  const [tokenInput, setTokenInput] = useState("");
+  const [loginError, setLoginError] = useState(false);
+  // Bumped after a successful unlock to reconnect the feeds with the cookie.
+  const [session, setSession] = useState(0);
   const traceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
-
     const refreshLedger = () =>
-      fetch(`/api/state${qs}`)
+      fetch("/api/state")
         .then((r) => r.json())
         .then((d) => {
           setRefunds(d.refunds ?? []);
@@ -91,7 +87,7 @@ export default function AdminPage() {
         .catch(() => undefined);
     refreshLedger();
 
-    const es = new EventSource(`/api/logs${qs}`);
+    const es = new EventSource("/api/logs");
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     es.onmessage = (m) => {
@@ -105,7 +101,24 @@ export default function AdminPage() {
       }
     };
     return () => es.close();
-  }, [token]);
+  }, [session]);
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: tokenInput }),
+    }).catch(() => null);
+    if (res?.ok) {
+      setTokenInput("");
+      setLoginError(false);
+      setAuthorized(true);
+      setSession((n) => n + 1); // reconnect /api/logs and refetch state with the cookie
+    } else {
+      setLoginError(true);
+    }
+  }
 
   useEffect(() => {
     if (follow && traceRef.current) {
@@ -141,10 +154,20 @@ export default function AdminPage() {
       </header>
 
       {!authorized && (
-        <div className="auth-banner">
-          This deployment protects the console with an admin token. Open this page as
-          <code> /admin?token=&lt;DEMO_ADMIN_TOKEN&gt;</code> to see the trace and ledger.
-        </div>
+        <form className="auth-banner" onSubmit={unlock}>
+          <span>This deployment protects the console with an admin token.</span>
+          <input
+            type="password"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder="Admin token"
+            autoFocus
+          />
+          <button type="submit" disabled={!tokenInput}>
+            Unlock
+          </button>
+          {loginError && <span className="auth-error">That token didn&apos;t match.</span>}
+        </form>
       )}
 
       <div className="console-body">
@@ -218,10 +241,7 @@ export default function AdminPage() {
               disabled={chaosArmed}
               title="Arm a one-shot simulated CRM outage: the next tool call fails so you can watch the agent hit the error and recover in the trace."
               onClick={() =>
-                fetch("/api/chaos", {
-                  method: "POST",
-                  headers: token ? { "x-admin-token": token } : undefined,
-                }).then((r) => r.ok && setChaosArmed(true))
+                fetch("/api/chaos", { method: "POST" }).then((r) => r.ok && setChaosArmed(true))
               }
             >
               {chaosArmed ? "⚡ outage armed — next tool call fails" : "⚡ simulate CRM outage"}

@@ -152,8 +152,10 @@ Hardening built in for public exposure (all inert in local dev):
   length, history length, and body size — one agent turn can fan out into
   many model calls, so the expensive endpoint is the guarded one.
 - **`DEMO_ADMIN_TOKEN`** (optional): gates the reasoning trace (`/api/logs`),
-  the decision ledger, and the failure injector (`/api/chaos`). Open the
-  console as `/admin?token=<value>`. Unset, everything stays open for local use.
+  the decision ledger, and the failure injector (`/api/chaos`). The console
+  shows an unlock form that exchanges the token for an HttpOnly cookie, so it
+  never appears in URLs; `x-admin-token` / `?token=` also work for scripting.
+  Unset, everything stays open for local use.
 - The API key never reaches the browser; `.dockerignore` keeps `.env*` out of
   images. Set a spend cap on the key in the Anthropic console regardless.
 

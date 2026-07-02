@@ -447,11 +447,40 @@ button {
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.auth-banner code {
+.auth-banner input {
   font-family: var(--font-mono), monospace;
   font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--console-line);
+  border-radius: 6px;
+  background: var(--console-panel);
+  color: var(--console-text);
+  min-width: 220px;
+}
+
+.auth-banner button {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--console-text);
+  color: var(--console-panel);
+}
+
+.auth-banner button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.auth-error {
+  color: var(--ev-err);
 }
 
 .console-body {

@@ -42,17 +42,37 @@ export function checkRateLimit(req: Request): { ok: true } | { ok: false; retryA
   return { ok: false, retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000) };
 }
 
-// True when the request may see admin surfaces (trace feed, ledger, chaos).
-// With DEMO_ADMIN_TOKEN unset (local dev), everything is open as before.
-// EventSource can't set headers, so the token is also accepted as ?token=.
-export function isAdmin(req: Request): boolean {
-  const expected = process.env.DEMO_ADMIN_TOKEN;
-  if (!expected) return true;
-  const supplied =
-    req.headers.get("x-admin-token") ?? new URL(req.url).searchParams.get("token") ?? "";
+function tokenMatches(supplied: string): boolean {
+  const expected = process.env.DEMO_ADMIN_TOKEN ?? "";
   const a = Buffer.from(supplied);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function cookieToken(req: Request): string {
+  const cookies = req.headers.get("cookie") ?? "";
+  const match = cookies.match(/(?:^|;\s*)admin_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+// True when the request may see admin surfaces (trace feed, ledger, chaos).
+// With DEMO_ADMIN_TOKEN unset (local dev), everything is open as before.
+// The normal browser flow is the HttpOnly cookie set by POST /api/session
+// (EventSource sends cookies but can't set headers); the header and query
+// forms remain for curl/scripting.
+export function isAdmin(req: Request): boolean {
+  if (!process.env.DEMO_ADMIN_TOKEN) return true;
+  const supplied =
+    req.headers.get("x-admin-token") ??
+    new URL(req.url).searchParams.get("token") ??
+    cookieToken(req);
+  return tokenMatches(supplied);
+}
+
+// POST /api/session helper: validates a token for the login form.
+export function validateToken(supplied: string): boolean {
+  if (!process.env.DEMO_ADMIN_TOKEN) return true;
+  return tokenMatches(supplied);
 }
 
 export function unauthorized(): Response {
