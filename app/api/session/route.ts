@@ -1,4 +1,4 @@
-import { validateToken } from "@/lib/guard";
+import { accessDenied, hasValidAccessJwt, validateToken } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +8,7 @@ const MAX_AGE_SEC = 60 * 60 * 24 * 7;
 // POST /api/session — exchange the admin token for an HttpOnly cookie, so the
 // admin console never needs the token in its URL. Body: {token}.
 export async function POST(req: Request): Promise<Response> {
+  if (!(await hasValidAccessJwt(req))) return accessDenied();
   let token = "";
   try {
     token = String(((await req.json()) as { token?: unknown }).token ?? "");

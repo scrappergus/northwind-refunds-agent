@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { runAgentTurn } from "@/lib/agent";
-import { checkRateLimit } from "@/lib/guard";
+import { accessDenied, checkRateLimit, hasValidAccessJwt } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +28,7 @@ interface ChatRequest {
 //   {type:"done", messages}       full updated history to send back next turn
 //   {type:"error", message}
 export async function POST(req: Request): Promise<Response> {
+  if (!(await hasValidAccessJwt(req))) return accessDenied();
   const raw = await req.text();
   if (raw.length > MAX_BODY_BYTES) {
     return Response.json({ error: "Request body too large." }, { status: 413 });

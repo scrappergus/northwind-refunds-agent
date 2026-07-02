@@ -1,5 +1,5 @@
 import { db } from "@/lib/store";
-import { isAdmin } from "@/lib/guard";
+import { accessDenied, hasValidAccessJwt, isAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // stays public (the chat's persona picker needs it); the ledger is admin-only
 // when a DEMO_ADMIN_TOKEN is configured.
 export async function GET(req: Request): Promise<Response> {
+  if (!(await hasValidAccessJwt(req))) return accessDenied();
   const admin = isAdmin(req);
   return Response.json({
     admin,
