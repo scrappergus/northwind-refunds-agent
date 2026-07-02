@@ -1,0 +1,347 @@
+{
+  "as_of": "2026-07-02",
+  "customers": [
+    {
+      "id": "cus_001",
+      "name": "Sarah Chen",
+      "email": "sarah.chen@example.com",
+      "joined": "2023-04-12",
+      "loyalty_tier": "silver",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1001",
+          "placed_at": "2026-06-18",
+          "delivered_at": "2026-06-22",
+          "status": "delivered",
+          "payment_method": "visa_4242",
+          "shipping_fee": 7.95,
+          "items": [
+            { "sku": "NW-JKT-081", "name": "Ridgeline Rain Jacket", "category": "standard", "price": 129.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_002",
+      "name": "Marcus Webb",
+      "email": "marcus.webb@example.com",
+      "joined": "2024-11-02",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 1,
+      "orders": [
+        {
+          "id": "ord_1002",
+          "placed_at": "2026-05-10",
+          "delivered_at": "2026-05-14",
+          "status": "delivered",
+          "payment_method": "mastercard_8810",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-BTS-220", "name": "Switchback Hiking Boots", "category": "standard", "price": 168.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_003",
+      "name": "Priya Patel",
+      "email": "priya.patel@example.com",
+      "joined": "2021-07-30",
+      "loyalty_tier": "gold",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1003",
+          "placed_at": "2026-05-08",
+          "delivered_at": "2026-05-12",
+          "status": "delivered",
+          "payment_method": "amex_3007",
+          "shipping_fee": 0.0,
+          "items": [
+            { "sku": "NW-PCK-330", "name": "Cirrus 38L Backpack", "category": "standard", "price": 189.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_004",
+      "name": "Tom Alvarez",
+      "email": "tom.alvarez@example.com",
+      "joined": "2025-01-19",
+      "loyalty_tier": "silver",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1004",
+          "placed_at": "2026-06-06",
+          "delivered_at": "2026-06-10",
+          "status": "delivered",
+          "payment_method": "visa_9954",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-GPS-115", "name": "TrailMark GPS Unit", "category": "electronics", "price": 249.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_005",
+      "name": "Dana Kim",
+      "email": "dana.kim@example.com",
+      "joined": "2022-09-14",
+      "loyalty_tier": "gold",
+      "flags": [],
+      "refunds_last_12mo": 1,
+      "orders": [
+        {
+          "id": "ord_1005",
+          "placed_at": "2026-06-20",
+          "delivered_at": "2026-06-24",
+          "status": "delivered",
+          "payment_method": "visa_1180",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-TNT-042-CL", "name": "Basecamp 2P Tent (clearance)", "category": "standard", "price": 159.0, "qty": 1, "final_sale": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_006",
+      "name": "Liam O'Connor",
+      "email": "liam.oconnor@example.com",
+      "joined": "2025-08-22",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1006",
+          "placed_at": "2026-06-29",
+          "delivered_at": null,
+          "status": "in_transit",
+          "payment_method": "paypal_liam.oconnor",
+          "shipping_fee": 7.95,
+          "items": [
+            { "sku": "NW-SLP-190", "name": "Aurora 20°F Sleeping Bag", "category": "standard", "price": 139.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_007",
+      "name": "Grace Okafor",
+      "email": "grace.okafor@example.com",
+      "joined": "2024-03-05",
+      "loyalty_tier": "silver",
+      "flags": ["fraud_watch"],
+      "refunds_last_12mo": 2,
+      "orders": [
+        {
+          "id": "ord_1007",
+          "placed_at": "2026-06-21",
+          "delivered_at": "2026-06-25",
+          "status": "delivered",
+          "payment_method": "visa_7731",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-JKT-095", "name": "Summit Down Parka", "category": "standard", "price": 289.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_008",
+      "name": "Ethan Ross",
+      "email": "ethan.ross@example.com",
+      "joined": "2023-12-11",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 3,
+      "orders": [
+        {
+          "id": "ord_1008",
+          "placed_at": "2026-06-15",
+          "delivered_at": "2026-06-19",
+          "status": "delivered",
+          "payment_method": "mastercard_2246",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-SHT-310", "name": "Granite Flannel Shirt", "category": "standard", "price": 64.0, "qty": 2, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_009",
+      "name": "Mia Torres",
+      "email": "mia.torres@example.com",
+      "joined": "2022-02-27",
+      "loyalty_tier": "gold",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1009",
+          "placed_at": "2026-06-12",
+          "delivered_at": "2026-06-16",
+          "status": "delivered",
+          "payment_method": "amex_5520",
+          "shipping_fee": 0.0,
+          "items": [
+            { "sku": "NW-KAY-500", "name": "Drift Inflatable Kayak", "category": "standard", "price": 649.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_010",
+      "name": "Noah Fischer",
+      "email": "noah.fischer@example.com",
+      "joined": "2025-05-01",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1010",
+          "placed_at": "2026-06-27",
+          "delivered_at": "2026-07-01",
+          "status": "delivered",
+          "payment_method": "visa_6402",
+          "shipping_fee": 9.95,
+          "items": [
+            { "sku": "NW-FUE-021", "name": "IsoPro Fuel Canister 8oz (4-pack)", "category": "perishable", "price": 39.0, "qty": 1, "final_sale": false },
+            { "sku": "NW-STV-118", "name": "PocketFlame Stove", "category": "standard", "price": 54.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_011",
+      "name": "Ava Lindqvist",
+      "email": "ava.lindqvist@example.com",
+      "joined": "2024-06-17",
+      "loyalty_tier": "silver",
+      "flags": [],
+      "refunds_last_12mo": 1,
+      "orders": [
+        {
+          "id": "ord_1011",
+          "placed_at": "2026-06-08",
+          "delivered_at": "2026-06-12",
+          "status": "delivered",
+          "payment_method": "visa_3315",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-MRE-077", "name": "Expedition Meal Kit (12 meals)", "category": "perishable", "price": 96.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_012",
+      "name": "Jack Murphy",
+      "email": "jack.murphy@example.com",
+      "joined": "2023-10-08",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1012",
+          "placed_at": "2026-06-19",
+          "delivered_at": "2026-06-23",
+          "status": "delivered",
+          "payment_method": "visa_8890_expired",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-HDL-260", "name": "Nightowl Headlamp 400", "category": "electronics", "price": 89.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_013",
+      "name": "Sofia Ramirez",
+      "email": "sofia.ramirez@example.com",
+      "joined": "2021-11-23",
+      "loyalty_tier": "gold",
+      "flags": [],
+      "refunds_last_12mo": 1,
+      "orders": [
+        {
+          "id": "ord_1013a",
+          "placed_at": "2026-06-14",
+          "delivered_at": "2026-06-18",
+          "status": "delivered",
+          "payment_method": "mastercard_4419",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-PNT-142", "name": "Traverse Softshell Pants", "category": "standard", "price": 98.0, "qty": 1, "final_sale": false }
+          ]
+        },
+        {
+          "id": "ord_1013b",
+          "placed_at": "2026-03-02",
+          "delivered_at": "2026-03-06",
+          "status": "delivered",
+          "payment_method": "mastercard_4419",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-GLV-055", "name": "Ascent Insulated Gloves", "category": "standard", "price": 45.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_014",
+      "name": "Ben Carter",
+      "email": "ben.carter@example.com",
+      "joined": "2025-02-09",
+      "loyalty_tier": "none",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1014",
+          "placed_at": "2026-06-10",
+          "delivered_at": "2026-06-14",
+          "status": "delivered",
+          "payment_method": "visa_2211",
+          "shipping_fee": 5.95,
+          "items": [
+            { "sku": "NW-SHO-405", "name": "Riverbed Trail Runners", "category": "standard", "price": 132.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cus_015",
+      "name": "Zoe Nakamura",
+      "email": "zoe.nakamura@example.com",
+      "joined": "2024-08-30",
+      "loyalty_tier": "silver",
+      "flags": [],
+      "refunds_last_12mo": 0,
+      "orders": [
+        {
+          "id": "ord_1015",
+          "placed_at": "2026-06-24",
+          "delivered_at": "2026-06-28",
+          "status": "delivered",
+          "payment_method": "applepay_zoe",
+          "shipping_fee": 4.95,
+          "items": [
+            { "sku": "NW-BTL-018", "name": "Cascade Insulated Bottle 32oz", "category": "standard", "price": 42.0, "qty": 1, "final_sale": false }
+          ]
+        }
+      ]
+    }
+  ]
+}

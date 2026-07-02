@@ -1,0 +1,24 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: dockerfiles/dev.dockerfile
+    working_dir: /workspace
+    environment:
+      # Next.js needs the port in the OS env before it parses .env files.
+      PORT: "3000"
+    env_file:
+      # Holds ANTHROPIC_API_KEY. Gitignored; see README.
+      - path: .env.local
+        required: false
+    volumes:
+      - .:/workspace:delegated
+      # node_modules in a named volume (macOS bind-mount perf + isolation from host)
+      - node_modules:/workspace/node_modules
+    ports:
+      - "3000:3000"
+    init: true
+    command: ["bin/dev", "all"]
+
+volumes:
+  node_modules: {}

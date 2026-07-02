@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Open one of the dev stack's browser-viewable pages in your default
+# browser. Pops an fzf picker; pass a name to skip it:
+#
+#   bin/browse            # interactive
+#   bin/browse chat       # straight to it
+#   bin/browse admin      # ditto
+
+set -euo pipefail
+
+COLOR=1
+[[ -t 1 ]] || COLOR=0
+[[ -n "${NO_COLOR:-}" ]] && COLOR=0
+[[ -n "${FORCE_COLOR:-}" ]] && COLOR=1
+dim() { if (( COLOR )); then printf '\033[2m%s\033[0m' "$1"; else printf '%s' "$1"; fi; }
+
+WEB_PORT=3000
+
+url_for() {
+  case "$1" in
+    chat)  echo "http://localhost:${WEB_PORT}" ;;
+    admin) echo "http://localhost:${WEB_PORT}/admin" ;;
+    *)     return 1 ;;
+  esac
+}
+
+opener() {
+  if   command -v open      >/dev/null 2>&1; then open "$1"
+  elif command -v xdg-open  >/dev/null 2>&1; then xdg-open "$1"
+  elif command -v wslview   >/dev/null 2>&1; then wslview "$1"
+  else
+    echo "no opener found on this platform — visit: $1" >&2
+    return 1
+  fi
+}
+
+CHOICE="${1:-}"
+if [[ -z "$CHOICE" ]]; then
+  command -v fzf >/dev/null || {
+    echo "fzf required for the picker (brew install fzf)" >&2
+    echo "or pass a name directly: bin/browse <chat|admin>" >&2
+    exit 1
+  }
+
+  LIST="$(
+    for name in chat admin; do
+      url="$(url_for "$name")"
+      printf '%-8s %s\n' "$name" "$(dim "$url")"
+    done
+  )"
+  PICK="$(printf '%s\n' "$LIST" | fzf --ansi --prompt="open which? " --height=40% \
+            --color=fg+:black,bg+:yellow,hl+:black:bold,pointer:red:bold)"
+  [[ -z "$PICK" ]] && exit 0
+  CHOICE="$(awk '{print $1}' <<<"$PICK")"
+fi
+
+URL="$(url_for "$CHOICE")" || {
+  echo "unknown page: $CHOICE" >&2
+  echo "valid: chat admin" >&2
+  exit 1
+}
+
+echo "opening $URL"
+opener "$URL"

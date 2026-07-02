@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Dev launcher. Behaviour depends on context:
+#
+#   On host:      `bin/dev [up|down|sh|logs|init|status|restart]`
+#                 — drives docker compose.
+#   In container: `bin/dev [install|all|web]`
+#                 — installs deps / runs the Next.js dev server.
+#
+# Detection: Docker creates /.dockerenv in every container.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(dirname "$SCRIPT_DIR")"
+
+if [[ -f /.dockerenv ]]; then
+  ############################################################
+  # In-container mode
+  ############################################################
+  cd /workspace
+
+  install_deps() { npm install; }
+
+  run_web() { PORT=3000 exec npm run dev 2>&1 | sed -u "s/^/[web] /"; }
+
+  case "${1:-}" in
+    install) install_deps ;;
+    web)     run_web ;;
+    all)
+      # Install on first run only (named volume persists across restarts).
+      [[ -z "$(ls -A /workspace/node_modules 2>/dev/null)" ]] && install_deps
+      # Respawn loop so a crash doesn't take the container down.
+      while true; do
+        run_web || true
+        echo "[supervisor] dev server exited; restarting in 1s…"
+        sleep 1
+      done
+      ;;
+    *) echo "usage (in container): bin/dev [install|all|web]"; exit 2 ;;
+  esac
+
+else
+  ############################################################
+  # Host mode
+  ############################################################
+  COMPOSE=(docker compose -f "$REPO/docker-compose.dev.yml")
+  cd "$REPO"
+
+  # No args: fzf-pick a subcommand.
+  cmd="${1:-}"
+  if [[ -z "$cmd" ]]; then
+    cmd=$(printf 'up\ndown\ninit\nlogs\nstatus\nsh\nrestart\n' \
+      | fzf --prompt="bin/dev: " --height=40% --no-info \
+            --color=fg+:black,bg+:yellow,hl+:black:bold,pointer:red:bold) || exit 130
+    [[ -z "$cmd" ]] && exit 130
+    set -- "$cmd"
+  fi
+
+  case "$cmd" in
+    up)      "${COMPOSE[@]}" up -d --build ;;
+    down)    "${COMPOSE[@]}" down ;;
+    sh)      "${COMPOSE[@]}" up -d --build && exec "${COMPOSE[@]}" exec dev bash ;;
+    logs)    exec "${COMPOSE[@]}" logs -f "${@:2}" ;;
+    init)    "${COMPOSE[@]}" up -d --build && "${COMPOSE[@]}" exec dev /workspace/bin/dev install ;;
+    status)  "${COMPOSE[@]}" ps ;;
+    restart) "${COMPOSE[@]}" restart dev ;;
+    *)       echo "usage (on host): bin/dev [up|down|sh|logs|init|status|restart]"; exit 2 ;;
+  esac
+fi
