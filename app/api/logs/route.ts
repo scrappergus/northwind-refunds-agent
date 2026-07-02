@@ -1,4 +1,5 @@
 import { db, subscribe } from "@/lib/store";
+import { isAdmin, unauthorized } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 // GET /api/logs — SSE feed for the admin dashboard. Sends recent history on
 // connect, then every new agent event as it happens.
 export async function GET(req: Request): Promise<Response> {
+  if (!isAdmin(req)) return unauthorized();
   const encoder = new TextEncoder();
   let unsubscribe: (() => void) | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;

@@ -1,8 +1,16 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { runAgentTurn } from "@/lib/agent";
+import { checkRateLimit } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Abuse caps: each accepted request can fan out into many model calls, so
+// bound everything the client controls before it reaches the API.
+const MAX_BODY_BYTES = 256 * 1024;
+const MAX_MESSAGE_CHARS = 2_000;
+const MAX_HISTORY_ENTRIES = 60;
+const MAX_ID_CHARS = 64;
 
 interface ChatRequest {
   conversationId: string;
@@ -20,9 +28,44 @@ interface ChatRequest {
 //   {type:"done", messages}       full updated history to send back next turn
 //   {type:"error", message}
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as ChatRequest;
-  if (!body.conversationId || typeof body.userMessage !== "string") {
-    return Response.json({ error: "conversationId and userMessage are required" }, { status: 400 });
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_BYTES) {
+    return Response.json({ error: "Request body too large." }, { status: 413 });
+  }
+  let body: ChatRequest;
+  try {
+    body = JSON.parse(raw) as ChatRequest;
+  } catch {
+    return Response.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+  if (
+    typeof body.conversationId !== "string" ||
+    !body.conversationId ||
+    body.conversationId.length > MAX_ID_CHARS ||
+    typeof body.userMessage !== "string" ||
+    !body.userMessage.trim() ||
+    body.userMessage.length > MAX_MESSAGE_CHARS
+  ) {
+    return Response.json(
+      { error: "conversationId and userMessage are required (and size-limited)." },
+      { status: 400 },
+    );
+  }
+  const prior = body.messages ?? [];
+  if (
+    !Array.isArray(prior) ||
+    prior.length > MAX_HISTORY_ENTRIES ||
+    prior.some((m) => !m || (m.role !== "user" && m.role !== "assistant"))
+  ) {
+    return Response.json({ error: "messages must be a bounded chat history." }, { status: 400 });
+  }
+
+  const limit = checkRateLimit(req);
+  if (!limit.ok) {
+    return Response.json(
+      { error: "Rate limit reached — please wait before sending more messages." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
   }
 
   const encoder = new TextEncoder();

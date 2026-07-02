@@ -69,17 +69,29 @@ export default function AdminPage() {
   const [convFilter, setConvFilter] = useState("all");
   const [follow, setFollow] = useState(true);
   const [chaosArmed, setChaosArmed] = useState(false);
+  // Deployed with DEMO_ADMIN_TOKEN, this page is opened as /admin?token=…
+  const [token] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search).get("token") ?? ""),
+  );
+  const [authorized, setAuthorized] = useState(true);
   const traceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+
     const refreshLedger = () =>
-      fetch("/api/state")
+      fetch(`/api/state${qs}`)
         .then((r) => r.json())
-        .then((d) => setRefunds(d.refunds ?? []))
+        .then((d) => {
+          setRefunds(d.refunds ?? []);
+          setAuthorized(d.admin !== false);
+        })
         .catch(() => undefined);
     refreshLedger();
 
-    const es = new EventSource("/api/logs");
+    const es = new EventSource(`/api/logs${qs}`);
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     es.onmessage = (m) => {
@@ -93,7 +105,7 @@ export default function AdminPage() {
       }
     };
     return () => es.close();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (follow && traceRef.current) {
@@ -127,6 +139,13 @@ export default function AdminPage() {
         </div>
         <Link href="/">← Customer chat</Link>
       </header>
+
+      {!authorized && (
+        <div className="auth-banner">
+          This deployment protects the console with an admin token. Open this page as
+          <code> /admin?token=&lt;DEMO_ADMIN_TOKEN&gt;</code> to see the trace and ledger.
+        </div>
+      )}
 
       <div className="console-body">
         <aside className="ledger">
@@ -199,7 +218,10 @@ export default function AdminPage() {
               disabled={chaosArmed}
               title="Arm a one-shot simulated CRM outage: the next tool call fails so you can watch the agent hit the error and recover in the trace."
               onClick={() =>
-                fetch("/api/chaos", { method: "POST" }).then(() => setChaosArmed(true))
+                fetch("/api/chaos", {
+                  method: "POST",
+                  headers: token ? { "x-admin-token": token } : undefined,
+                }).then((r) => r.ok && setChaosArmed(true))
               }
             >
               {chaosArmed ? "⚡ outage armed — next tool call fails" : "⚡ simulate CRM outage"}

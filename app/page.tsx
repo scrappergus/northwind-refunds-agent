@@ -151,6 +151,9 @@ export default function ChatPage() {
           customerEmail: persona.email,
         }),
       });
+      if (res.status === 429) {
+        throw new Error("You're sending messages quickly — please wait a moment and try again.");
+      }
       if (!res.ok || !res.body) throw new Error(`Request failed (${res.status})`);
 
       const reader = res.body.getReader();

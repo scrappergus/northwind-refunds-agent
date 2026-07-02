@@ -1,0 +1,7 @@
+# Never bake secrets or local state into images
+.env*
+!.env.local.example
+.git
+node_modules
+.next
+notes

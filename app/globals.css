@@ -439,6 +439,21 @@ button {
   border-color: var(--ev-ok);
 }
 
+.auth-banner {
+  margin: 14px 26px 0;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--ev-retry) 10%, var(--console-panel));
+  border: 1px solid var(--ev-retry);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-banner code {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+}
+
 .console-body {
   display: grid;
   grid-template-columns: 340px 1fr;

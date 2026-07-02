@@ -135,6 +135,28 @@ refuses first: order ownership (`get_order` throws on another customer's order
 id — R5.3) and the `process_refund` policy re-check. They're defense in depth
 against a hallucinating or jailbroken model, not just prompt rules.
 
+## Deploying a public demo
+
+A production image is provided (standalone Next build, non-root):
+
+```sh
+docker build -f dockerfiles/prod.dockerfile -t northwind-refunds-agent .
+docker run -p 3000:3000 -e ANTHROPIC_API_KEY=sk-ant-... \
+  -e DEMO_ADMIN_TOKEN=some-long-secret northwind-refunds-agent
+```
+
+Hardening built in for public exposure (all inert in local dev):
+
+- **Per-IP rate limiting** on `/api/chat` (default 20 turns / 5 min;
+  `CHAT_RATE_LIMIT` / `CHAT_RATE_WINDOW_SEC`), plus size caps on message
+  length, history length, and body size — one agent turn can fan out into
+  many model calls, so the expensive endpoint is the guarded one.
+- **`DEMO_ADMIN_TOKEN`** (optional): gates the reasoning trace (`/api/logs`),
+  the decision ledger, and the failure injector (`/api/chaos`). Open the
+  console as `/admin?token=<value>`. Unset, everything stays open for local use.
+- The API key never reaches the browser; `.dockerignore` keeps `.env*` out of
+  images. Set a spend cap on the key in the Anthropic console regardless.
+
 ## Notes & tradeoffs
 
 - **State is in-memory** (ledger, event log) — restarts reset it. Right-sized
