@@ -300,11 +300,43 @@ button {
 
 .composer form {
   display: flex;
+  align-items: center;
   gap: 8px;
   background: var(--paper);
   border: 1.5px solid var(--ink);
   border-radius: 14px;
-  padding: 6px 6px 6px 16px;
+  padding: 6px 6px 6px 8px;
+}
+
+/* Scoped as .composer .mic-btn so it outranks the .composer button rules */
+.composer .mic-btn {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ink-soft);
+}
+
+.composer .mic-btn:not(:disabled):hover {
+  color: var(--fir);
+  background: var(--fog);
+}
+
+.composer .mic-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.composer .mic-btn.listening {
+  color: #fff;
+  background: var(--amber);
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 .composer input {

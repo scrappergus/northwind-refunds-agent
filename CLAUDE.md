@@ -5,8 +5,9 @@
 ## Architecture
 
 Next.js app with two surfaces over one in-memory event stream: a customer chat
-(`app/page.tsx`) and an admin reasoning console (`app/admin/page.tsx`, light
-"alpine morning" theme). `lib/agent.ts` runs a raw Anthropic tool-calling loop
+(`app/page.tsx`, typed or voice — demo-grade Web Speech API, Chrome only) and
+an admin reasoning console (`app/admin/page.tsx`, light "alpine morning"
+theme). `lib/agent.ts` runs a raw Anthropic tool-calling loop
 (`claude-opus-4-8`, streaming, own retry loop so attempts are visible in the
 trace). All refund decisions come from `lib/policy.ts`, a deterministic engine;
 `process_refund` re-runs it server-side, so the model cannot approve outside

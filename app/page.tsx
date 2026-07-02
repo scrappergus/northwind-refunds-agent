@@ -22,6 +22,47 @@ const SUGGESTIONS = [
   "Can you refund me to a different card?",
 ];
 
+// Minimal typings for the Web Speech API (not in TS's DOM lib).
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+}
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+function getRecognitionCtor(): SpeechRecognitionCtor | undefined {
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
+// Strip markdown/emoji so the synthesized voice doesn't read "asterisk asterisk".
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/[*_`#]/g, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .trim();
+}
+
+function speak(text: string) {
+  const clean = cleanForSpeech(text);
+  if (!clean || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.rate = 1.05;
+  window.speechSynthesis.speak(utterance);
+}
+
 export default function ChatPage() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [persona, setPersona] = useState<Persona | null>(null);
@@ -31,6 +72,9 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
+  const [micSupported, setMicSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,6 +82,11 @@ export default function ChatPage() {
       .then((r) => r.json())
       .then((d) => setPersonas(d.customers ?? []))
       .catch(() => setPersonas([]));
+    setMicSupported(Boolean(getRecognitionCtor()));
+    return () => {
+      recognitionRef.current?.abort();
+      window.speechSynthesis?.cancel();
+    };
   }, []);
 
   useEffect(() => {
@@ -58,7 +107,10 @@ export default function ChatPage() {
     setHistory([]);
   }
 
-  async function send(text: string) {
+  // `voice: true` marks a turn that came in through the mic: the agent's reply
+  // segments are then spoken aloud as each one completes (utterances queue up
+  // in the synthesizer, so "Let me check…" plays while tools run).
+  async function send(text: string, voice = false) {
     if (!persona || busy || !text.trim()) return;
     const userMessage = text.trim();
     setInput("");
@@ -66,6 +118,15 @@ export default function ChatPage() {
     setTranscript((t) => [...t, { kind: "user", text: userMessage }]);
 
     let agentText = "";
+    let lastSpoken = "";
+    const flushSpeech = () => {
+      if (!voice) return;
+      const segment = agentText.trim();
+      if (segment && segment !== lastSpoken) {
+        speak(segment);
+        lastSpoken = segment;
+      }
+    };
     const appendAgent = (delta: string) => {
       agentText += delta;
       setTranscript((t) => {
@@ -117,9 +178,11 @@ export default function ChatPage() {
             appendAgent(msg.text);
           } else if (msg.type === "trace") {
             if (msg.event === "tool_call") {
+              flushSpeech(); // current reply segment is complete — say it
               setActivity(String(msg.data.tool));
               started = false; // next deltas begin a fresh agent bubble
             } else if (msg.event === "thinking") {
+              flushSpeech();
               setActivity("thinking");
               started = false;
             }
@@ -136,9 +199,45 @@ export default function ChatPage() {
         { kind: "agent", text: `[Connection error: ${err instanceof Error ? err.message : err}]` },
       ]);
     } finally {
+      flushSpeech();
       setActivity(null);
       setBusy(false);
     }
+  }
+
+  function toggleMic() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Recognition = getRecognitionCtor();
+    if (!Recognition) return;
+    window.speechSynthesis?.cancel(); // don't transcribe our own voice
+
+    const rec = new Recognition();
+    rec.lang = "en-US";
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onresult = (e) => {
+      let transcribed = "";
+      let isFinal = false;
+      for (let i = 0; i < e.results.length; i++) {
+        transcribed += e.results[i][0].transcript;
+        if (e.results[i].isFinal) isFinal = true;
+      }
+      if (isFinal) {
+        setInput("");
+        rec.stop();
+        send(transcribed, true);
+      } else {
+        setInput(transcribed);
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
   }
 
   return (
@@ -219,14 +318,39 @@ export default function ChatPage() {
                 send(input);
               }}
             >
+              {micSupported && (
+                <button
+                  type="button"
+                  className={`mic-btn ${listening ? "listening" : ""}`}
+                  onClick={toggleMic}
+                  disabled={busy}
+                  aria-label={listening ? "Stop listening" : "Speak your message"}
+                  title={
+                    listening
+                      ? "Stop listening"
+                      : "Speak your message — the agent's reply is read aloud"
+                  }
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                    <rect x="6" y="1.5" width="4" height="8" rx="2" />
+                    <path
+                      d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </svg>
+                </button>
+              )}
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Write a message…"
-                disabled={busy}
+                placeholder={listening ? "Listening…" : "Write a message…"}
+                disabled={busy || listening}
                 autoFocus
               />
-              <button type="submit" disabled={busy || !input.trim()}>
+              <button type="submit" disabled={busy || listening || !input.trim()}>
                 Send
               </button>
             </form>

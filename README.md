@@ -9,7 +9,7 @@ live to an admin console as a reasoning trace.
 
 | Surface | URL | What it shows |
 |---|---|---|
-| Customer chat | `http://localhost:3000` | Pick one of 15 demo customers and request a refund |
+| Customer chat | `http://localhost:3000` | Pick one of 15 demo customers and request a refund — typed, or spoken via the mic button |
 | Agent console | `http://localhost:3000/admin` | Live reasoning trace (thinking, tool calls, retries, failures) + decision ledger |
 
 ## Quick start
@@ -30,7 +30,7 @@ Without Docker: `npm install && npm run dev` (Node 20+; Next.js reads
 ## Architecture
 
 ```
-app/page.tsx        Customer chat (streams the agent's reply token by token)
+app/page.tsx        Customer chat (streams the reply token by token; voice mode)
 app/admin/page.tsx  Agent console (SSE feed of every reasoning/tool event)
 app/api/chat        POST — runs one agent turn, streams SSE frames
 app/api/logs        GET  — live SSE feed for the admin trace
@@ -83,6 +83,20 @@ The LLM never decides eligibility by itself:
 | `process_refund` | Execute an approved refund (re-validates; can refuse) |
 | `deny_refund` | Record a denial with the rule ids that justify it |
 | `escalate_to_human` | Open a human-review ticket (fraud flags, >$400, repeat refunders) |
+
+### Voice mode
+
+The mic button in the chat composer starts a spoken interaction: speech-to-text
+via the browser's Web Speech API (Chrome/Edge), auto-send on a final
+transcript, and the agent's reply segments are read aloud as they complete —
+so "Let me pull up your order…" plays while the tools run. Typed messages stay
+silent.
+
+This is deliberately demo-grade: recognition and synthesis run entirely in the
+browser, so there's no server-side audio path. A production voice pipeline
+(OpenAI Realtime, LiveKit, ElevenLabs) would slot in as another producer and
+subscriber on the same agent loop and event stream — the tools and policy
+engine would not change.
 
 ## Demo scenarios
 
