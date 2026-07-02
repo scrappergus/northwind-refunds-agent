@@ -10,18 +10,20 @@
   --amber: #c7702e;
   --line: #dcdfd6;
 
-  /* Admin console — dark spruce */
-  --console-bg: #0f1512;
-  --console-panel: #161f1a;
-  --console-panel-2: #1b2620;
-  --console-line: #263329;
-  --console-text: #d8e2db;
-  --console-dim: #7e938a;
-  --ev-thinking: #8ba297;
-  --ev-tool: #e0b458;
-  --ev-ok: #7fbf8e;
-  --ev-err: #e07a6b;
-  --ev-retry: #e09a58;
+  /* Admin console — alpine morning: warm sunlit cream, white panels,
+     event colors cut dark enough to read at 10px on white. */
+  --console-bg: #f5f1e4;
+  --console-panel: #ffffff;
+  --console-panel-2: #f7f2e3;
+  --console-line: #e4ddc7;
+  --console-text: #22332c;
+  --console-dim: #5f6f63;
+  --ev-thinking: #5e7367;
+  --ev-tool: #96690c;
+  --ev-ok: #257a49;
+  --ev-err: #bf4934;
+  --ev-retry: #a95f14;
+  --sunrise: linear-gradient(90deg, #2e5d46 0%, #6fae7e 35%, #eec24f 72%, #e78f4c 100%);
 
   --radius: 10px;
 }
@@ -358,18 +360,31 @@ button {
 /* ─── Admin console ──────────────────────────────────────────────────── */
 .console {
   min-height: 100dvh;
-  background: var(--console-bg);
+  /* Faint morning-sky wash at the top of the page */
+  background: linear-gradient(180deg, #fffbee 0%, var(--console-bg) 260px);
   color: var(--console-text);
   font-size: 14px;
 }
 
 .console-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 16px 26px;
-  border-bottom: 1px solid var(--console-line);
+  background: var(--console-panel);
+}
+
+/* Sunrise strip — fir to meadow to sun */
+.console-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--sunrise);
 }
 
 .console-header .wordmark {
@@ -435,6 +450,7 @@ button {
   border: 1px solid var(--console-line);
   border-radius: 8px;
   padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(34, 51, 44, 0.05);
 }
 
 .stat .n {
@@ -475,6 +491,7 @@ button {
   border: 1px solid var(--console-line);
   border-radius: 8px;
   padding: 11px 12px;
+  box-shadow: 0 1px 2px rgba(34, 51, 44, 0.05);
 }
 
 .ledger-card .row1 {
@@ -501,6 +518,8 @@ button {
   border-radius: 3px;
   padding: 2px 7px;
   transform: rotate(-2deg);
+  /* Ink-pad tint: each stamp variant sets `color`, the fill follows it */
+  background: color-mix(in srgb, currentColor 9%, transparent);
 }
 
 .stamp.refunded {
@@ -624,6 +643,7 @@ button {
   font-family: var(--font-mono), monospace;
   font-size: 12.5px;
   line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(34, 51, 44, 0.06);
 }
 
 .tr {
