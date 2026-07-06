@@ -435,8 +435,14 @@ button {
 /* ─── Admin console ──────────────────────────────────────────────────── */
 .console {
   min-height: 100dvh;
-  /* Faint morning-sky wash at the top of the page */
-  background: linear-gradient(180deg, #fffbee 0%, var(--console-bg) 260px);
+  /* Faint morning-sky wash at the top of the page. Kept to a 260px band over
+     a solid background: a full-height gradient makes Firefox's software
+     WebRender re-rasterize the whole viewport every scroll frame (CPU
+     gradient fill dominated a jank profile). */
+  background-color: var(--console-bg);
+  background-image: linear-gradient(180deg, #fffbee 0%, var(--console-bg) 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 260px;
   color: var(--console-text);
   font-size: 14px;
 }
@@ -606,11 +612,25 @@ button {
 }
 
 .ledger-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
   background: var(--console-panel);
   border: 1px solid var(--console-line);
   border-radius: 8px;
   padding: 11px 12px;
   box-shadow: 0 1px 2px rgba(34, 51, 44, 0.05);
+}
+
+.ledger-card:hover,
+.ledger-card:focus-visible {
+  border-color: #b9ae8e;
+}
+
+.ledger-card.active {
+  border-color: var(--ev-ok);
+  box-shadow: 0 0 0 1px var(--ev-ok), 0 1px 2px rgba(34, 51, 44, 0.05);
 }
 
 .ledger-card .row1 {
@@ -769,6 +789,9 @@ button {
 .trace {
   flex: 1;
   overflow-y: auto;
+  /* Firefox won't async-scroll a rounded overflow box without this hint —
+     it repaints every row on the main thread per frame and stutters. */
+  will-change: scroll-position;
   max-height: calc(100dvh - 175px);
   background: var(--console-panel);
   border: 1px solid var(--console-line);
