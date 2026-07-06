@@ -34,11 +34,16 @@ export async function GET(req: Request): Promise<Response> {
 
       send({ type: "history", events: db.events.slice(-500) });
       unsubscribe = subscribe((event) => send({ type: "event", event }));
-      // Keep intermediaries from closing the idle connection.
-      heartbeat = setInterval(
-        () => controller.enqueue(encoder.encode(": ping\n\n")),
-        15000,
-      );
+      // Keep intermediaries from closing the idle connection. Guard the write
+      // the same way `send` does — enqueuing on a closed controller throws
+      // "Invalid state: Controller is already closed".
+      heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": ping\n\n"));
+        } catch {
+          cleanup();
+        }
+      }, 15000);
       req.signal.addEventListener("abort", cleanup);
     },
     cancel() {

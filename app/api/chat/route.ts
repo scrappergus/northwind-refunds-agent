@@ -73,8 +73,19 @@ export async function POST(req: Request): Promise<Response> {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (frame: Record<string, unknown>) =>
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+      // The client can disconnect mid-turn (e.g. the "← Customers" back
+      // button) while runAgentTurn is still streaming. Once that happens the
+      // controller is closed; enqueuing again throws "Invalid state:
+      // Controller is already closed". Guard every write and go quiet.
+      let closed = false;
+      const send = (frame: Record<string, unknown>) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
+        } catch {
+          closed = true;
+        }
+      };
 
       try {
         const isFirstTurn = (body.messages ?? []).length === 0;
@@ -94,7 +105,13 @@ export async function POST(req: Request): Promise<Response> {
       } catch (err) {
         send({ type: "error", message: err instanceof Error ? err.message : String(err) });
       } finally {
-        controller.close();
+        if (!closed) {
+          try {
+            controller.close();
+          } catch {
+            // already closed by the client
+          }
+        }
       }
     },
   });
