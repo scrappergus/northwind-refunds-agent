@@ -13,6 +13,7 @@ interface AgentEvent {
 
 interface RefundRecord {
   id: string;
+  conversationId: string;
   customerName: string;
   orderId: string;
   outcome: "refunded" | "denied" | "escalated";
@@ -96,6 +97,8 @@ export default function AdminPage() {
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [connected, setConnected] = useState(false);
   const [convFilter, setConvFilter] = useState("all");
+  // Ledger outcome filter, toggled by clicking the stat cards.
+  const [outcomeFilter, setOutcomeFilter] = useState<RefundRecord["outcome"] | null>(null);
   const [follow, setFollow] = useState(true);
   const [chaosArmed, setChaosArmed] = useState(false);
   const [authorized, setAuthorized] = useState(true);
@@ -124,6 +127,13 @@ export default function AdminPage() {
       if (frame.type === "history") {
         setEvents(frame.events);
       } else if (frame.type === "event") {
+        if (frame.event.type === "reset") {
+          setEvents([]);
+          setConvFilter("all");
+          setChaosArmed(false);
+          refreshLedger();
+          return;
+        }
         setEvents((prev) => [...prev.slice(-1500), frame.event]);
         if (frame.event.type === "decision") refreshLedger();
         if (frame.event.type === "tool_error") setChaosArmed(false);
@@ -155,10 +165,39 @@ export default function AdminPage() {
     }
   }, [events, follow, convFilter]);
 
-  const conversations = useMemo(
-    () => [...new Set(events.map((e) => e.conversationId))],
-    [events],
-  );
+  // Human labels for the conversation filter: "Sarah Chen · 12:51 PM",
+  // derived from each conversation's first event and its lookup_customer
+  // result. Falls back to a shortened id until the customer is identified.
+  const conversations = useMemo(() => {
+    const seen = new Map<string, { name?: string; firstTs: string; lastTs: string }>();
+    for (const e of events) {
+      let info = seen.get(e.conversationId);
+      if (!info) {
+        info = { firstTs: e.ts, lastTs: e.ts };
+        seen.set(e.conversationId, info);
+      }
+      info.lastTs = e.ts;
+      if (!info.name && e.type === "tool_result" && e.data.tool === "lookup_customer") {
+        const name = (e.data.result as { name?: string } | undefined)?.name;
+        if (name) info.name = name;
+      }
+    }
+    return [...seen.entries()].map(([id, info]) => ({
+      id,
+      name: info.name,
+      firstTs: info.firstTs,
+      lastTs: info.lastTs,
+      label: `${info.name ?? id.slice(0, 16) + "…"} · ${new Date(info.firstTs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+    }));
+  }, [events]);
+  // Conversations with no recorded decision yet — shown in the ledger as
+  // "in progress" so live chats are visible before they resolve.
+  const openConversations = useMemo(() => {
+    const decided = new Set(refunds.map((r) => r.conversationId));
+    return conversations
+      .filter((c) => !decided.has(c.id))
+      .sort((a, b) => b.lastTs.localeCompare(a.lastTs));
+  }, [conversations, refunds]);
   const visible = useMemo(
     () => (convFilter === "all" ? events : events.filter((e) => e.conversationId === convFilter)),
     [events, convFilter],
@@ -203,28 +242,55 @@ export default function AdminPage() {
         <aside className="ledger">
           <h2>Decision ledger</h2>
           <div className="stat-row">
-            <div className="stat ok">
-              <div className="n">{counts.refunded}</div>
-              <div className="l">Refunded</div>
-            </div>
-            <div className="stat deny">
-              <div className="n">{counts.denied}</div>
-              <div className="l">Denied</div>
-            </div>
-            <div className="stat esc">
-              <div className="n">{counts.escalated}</div>
-              <div className="l">Escalated</div>
-            </div>
+            {(
+              [
+                ["refunded", "ok", counts.refunded, "Refunded"],
+                ["denied", "deny", counts.denied, "Denied"],
+                ["escalated", "esc", counts.escalated, "Escalated"],
+              ] as const
+            ).map(([outcome, cls, n, label]) => (
+              <button
+                key={outcome}
+                type="button"
+                className={`stat ${cls} ${outcomeFilter === outcome ? "active" : ""}`}
+                title={`Show only ${outcome} decisions (click again for all)`}
+                onClick={() => setOutcomeFilter((f) => (f === outcome ? null : outcome))}
+              >
+                <div className="n">{n}</div>
+                <div className="l">{label}</div>
+              </button>
+            ))}
           </div>
 
           <div className="ledger-list">
-            {refunds.length === 0 && (
+            {refunds.length === 0 && openConversations.length === 0 && (
               <div className="empty">
                 No decisions yet. Open the customer chat and run a refund conversation —
                 every processed, denied, or escalated case lands here.
               </div>
             )}
-            {refunds.map((r) => (
+            {outcomeFilter === null &&
+              openConversations.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`ledger-card ${convFilter === c.id ? "active" : ""}`}
+                  title="Show this conversation in the trace (click again for all)"
+                  onClick={() => setConvFilter((f) => (f === c.id ? "all" : c.id))}
+                >
+                  <div className="row1">
+                    <span className="who">{c.name ?? c.id.slice(0, 16) + "…"}</span>
+                    <span className="stamp open">open</span>
+                  </div>
+                  <div className="row2">
+                    <span>started {new Date(c.firstTs).toLocaleTimeString()}</span>
+                    <span>last activity {new Date(c.lastTs).toLocaleTimeString()}</span>
+                  </div>
+                </button>
+              ))}
+            {refunds
+              .filter((r) => outcomeFilter === null || r.outcome === outcomeFilter)
+              .map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -260,8 +326,8 @@ export default function AdminPage() {
             <select value={convFilter} onChange={(e) => setConvFilter(e.target.value)}>
               <option value="all">all conversations ({conversations.length})</option>
               {conversations.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+                <option key={c.id} value={c.id}>
+                  {c.label}
                 </option>
               ))}
             </select>
@@ -282,6 +348,13 @@ export default function AdminPage() {
               }
             >
               {chaosArmed ? "⚡ outage armed — next tool call fails" : "⚡ simulate CRM outage"}
+            </button>
+            <button
+              className="chaos-btn"
+              title="Clear the decision ledger and reasoning trace for a fresh demo. Same effect as a server restart, without the restart."
+              onClick={() => fetch("/api/reset", { method: "POST" })}
+            >
+              ⌫ clear ledger &amp; trace
             </button>
           </div>
 

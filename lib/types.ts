@@ -62,7 +62,10 @@ export type AgentEventType =
   | "retry"
   | "decision"
   | "turn_end"
-  | "agent_error";
+  | "agent_error"
+  // Broadcast-only (never persisted): tells connected consoles the demo
+  // state was cleared so they empty their trace/ledger live.
+  | "reset";
 
 export interface AgentEvent {
   id: number;

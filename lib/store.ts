@@ -78,6 +78,30 @@ export function recordRefund(record: Omit<RefundRecord, "id" | "at">): RefundRec
   return full;
 }
 
+// Clear the ledger and trace for a fresh demo without a server restart.
+// Notifies live consoles with a broadcast-only "reset" event — deliberately
+// not persisted, so late-joining consoles just see an empty history.
+export function resetDemo(): void {
+  db.refunds = [];
+  db.events = [];
+  db.nextEventId = 1;
+  db.chaosArmed = false;
+  const event: AgentEvent = {
+    id: 0,
+    conversationId: "system",
+    ts: new Date().toISOString(),
+    type: "reset",
+    data: {},
+  };
+  for (const fn of db.subscribers) {
+    try {
+      fn(event);
+    } catch {
+      // dead subscriber; cleaned up on unsubscribe
+    }
+  }
+}
+
 export function armChaos(): void {
   db.chaosArmed = true;
 }

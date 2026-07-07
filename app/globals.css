@@ -571,11 +571,25 @@ button {
 }
 
 .stat {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
   background: var(--console-panel);
   border: 1px solid var(--console-line);
   border-radius: 8px;
   padding: 10px 12px;
   box-shadow: 0 1px 2px rgba(34, 51, 44, 0.05);
+}
+
+.stat:hover,
+.stat:focus-visible {
+  border-color: #b9ae8e;
+}
+
+.stat.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 1px 2px rgba(34, 51, 44, 0.05);
 }
 
 .stat .n {
@@ -594,14 +608,17 @@ button {
   margin-top: 5px;
 }
 
-.stat.ok .n {
-  color: var(--ev-ok);
+.stat.ok {
+  --accent: var(--ev-ok);
 }
-.stat.deny .n {
-  color: var(--ev-err);
+.stat.deny {
+  --accent: var(--ev-err);
 }
-.stat.esc .n {
-  color: var(--ev-tool);
+.stat.esc {
+  --accent: var(--ev-tool);
+}
+.stat .n {
+  color: var(--accent);
 }
 
 .ledger-list {
@@ -674,6 +691,12 @@ button {
 .stamp.escalated {
   color: var(--ev-tool);
   border-color: var(--ev-tool);
+}
+
+/* Conversation still in flight — no decision recorded yet */
+.stamp.open {
+  color: var(--ev-thinking);
+  border-color: var(--ev-thinking);
 }
 
 .ledger-card .row2 {
