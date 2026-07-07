@@ -16,6 +16,18 @@ interface ChatMsg {
   text: string;
 }
 
+// Customer-facing labels for the activity indicator — raw tool names
+// stay in the admin trace, not the chat.
+const ACTIVITY_LABELS: Record<string, string> = {
+  thinking: "thinking…",
+  lookup_customer: "looking up your account…",
+  get_order: "pulling up your order…",
+  check_refund_eligibility: "checking the refund policy…",
+  process_refund: "processing your refund…",
+  deny_refund: "finalizing the decision…",
+  escalate_to_human: "looping in a human teammate…",
+};
+
 const SUGGESTIONS = [
   "I'd like a refund on my last order.",
   "My order arrived damaged.",
@@ -105,6 +117,16 @@ export default function ChatPage() {
       },
     ]);
     setHistory([]);
+  }
+
+  function backToPicker() {
+    recognitionRef.current?.abort();
+    window.speechSynthesis?.cancel();
+    setPersona(null);
+    setTranscript([]);
+    setHistory([]);
+    setInput("");
+    setActivity(null);
   }
 
   // `voice: true` marks a turn that came in through the mic: the agent's reply
@@ -199,7 +221,10 @@ export default function ChatPage() {
     } catch (err) {
       setTranscript((t) => [
         ...t,
-        { kind: "agent", text: `[Connection error: ${err instanceof Error ? err.message : err}]` },
+        {
+          kind: "agent",
+          text: `[Connection error: ${err instanceof Error ? err.message : err}]`,
+        },
       ]);
     } finally {
       flushSpeech();
@@ -251,6 +276,11 @@ export default function ChatPage() {
           <small>Returns desk</small>
         </div>
         <div className="header-links">
+          {persona && (
+            <button type="button" className="back-link" onClick={backToPicker} disabled={busy}>
+              ← Customers
+            </button>
+          )}
           {persona && <span className="persona-chip">{persona.email}</span>}
           <Link href="/admin">Agent console →</Link>
         </div>
@@ -260,9 +290,9 @@ export default function ChatPage() {
         <section className="picker">
           <h1>Refunds, decided by the book.</h1>
           <p className="lede">
-            This demo store is staffed by an AI support agent that grounds every refund
-            decision in a strict written policy. Pick a customer to chat as — each one
-            exercises a different corner of the policy.
+            This demo store is staffed by an AI support agent that grounds every refund decision in
+            a strict written policy. Pick a customer to chat as — each one exercises a different
+            corner of the policy.
           </p>
           <div className="persona-grid">
             {personas.map((p) => (
@@ -299,7 +329,7 @@ export default function ChatPage() {
             {activity && (
               <div className="activity">
                 <span className="dot" />
-                {activity === "thinking" ? "thinking…" : `running ${activity}…`}
+                {ACTIVITY_LABELS[activity] ?? "working on it…"}
               </div>
             )}
             <div ref={endRef} />

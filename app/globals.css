@@ -120,6 +120,27 @@ button {
   border-color: var(--fir);
 }
 
+.header-links .back-link {
+  background: none;
+  border: none;
+  padding: 0 0 1px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.header-links .back-link:hover,
+.header-links .back-link:focus-visible {
+  color: var(--fir);
+  border-color: var(--fir);
+}
+
+.header-links .back-link:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .persona-chip {
   font-family: var(--font-mono), monospace;
   font-size: 12px;

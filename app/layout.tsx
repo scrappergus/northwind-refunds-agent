@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Instrument_Sans, Zilla_Slab } from "next/font/google";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({
+const display = Zilla_Slab({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["500", "600", "700"],

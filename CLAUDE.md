@@ -12,7 +12,11 @@ theme). `lib/agent.ts` runs a raw Anthropic tool-calling loop
 trace). All refund decisions come from `lib/policy.ts`, a deterministic engine;
 `process_refund` re-runs it server-side, so the model cannot approve outside
 policy. `lib/store.ts` holds events/ledger on `globalThis` (survives HMR,
-resets on restart). See README for the full file map and demo scenarios.
+resets on restart). `lib/guard.ts` carries the deploy hardening: per-IP rate
+limiting + input caps on `/api/chat`, an admin gate (unlock form →
+`POST /api/session` → HttpOnly cookie; header/query for scripting), and
+optional Cloudflare Access JWT validation that seals direct-origin access.
+See README for the full file map and demo scenarios.
 
 ## Conventions to preserve
 
@@ -24,6 +28,9 @@ resets on restart). See README for the full file map and demo scenarios.
   dark-theme pastels; keep contrast ≥4.5:1 at trace font sizes.
 - SDK auto-retry stays disabled (`maxRetries: 0`) — the loop's own retries feed
   the trace's `retry` events.
+- Auth flows never put secrets in URLs: the admin token travels via the
+  unlock-form cookie or `x-admin-token` header (`?token=` exists for curl only).
+- All guards are env-gated no-ops locally; never make local dev require them.
 
 ## Things that bite
 
@@ -37,12 +44,32 @@ resets on restart). See README for the full file map and demo scenarios.
   foreign order ids conversationally before any guard throws). To demo failure
   handling, use the ⚡ simulate CRM outage button in the admin console
   (`app/api/chaos` arms a one-shot fake tool timeout).
+- With `CF_ACCESS_TEAM_DOMAIN`/`CF_ACCESS_AUD` set, every API route requires a
+  valid `Cf-Access-Jwt-Assertion`. A stale/wrong AUD (e.g. after recreating
+  the Access application) makes every API call 403 — update or unset both
+  vars together.
+- `.composer button` outranks single-class selectors inside the composer;
+  scope new composer controls as `.composer .foo` or they inherit the dark
+  Send-button styling.
 - Mock data is dated around 2026-07; date-window scenarios drift stale as the
   real date moves past mid-July 2026.
+- Don't paint viewport-sized CSS gradients: under Firefox's software
+  WebRender (VMs, remote desktops, GPU-blocklisted machines) they get
+  re-rasterized on the CPU every scroll frame and the page visibly janks.
+  Keep gradients to fixed-size bands (see `.console`'s 260px background-size
+  wash). Same family of problem: don't animate `box-shadow`, and any
+  `prefers-reduced-motion` override must cap `animation-iteration-count`,
+  not just duration.
 
 ## Status
 
-Feature-complete and verified end-to-end with a live key (approve / deny /
-escalate / hold-the-line / chaos-retry all pass). Published at
-https://github.com/scrappergus/northwind-refunds-agent. In-memory state resets
-on server restart — restart right before demos for a clean ledger.
+Feature-complete and verified end-to-end with a live key: approve / deny /
+escalate / hold-the-line / chaos-retry all pass, plus demo-grade voice mode
+(mic button, Web Speech API). Published at
+https://github.com/scrappergus/northwind-refunds-agent and deployed to
+DigitalOcean App Platform (production Dockerfile, standalone build) behind a
+Cloudflare-proxied domain with a Cloudflare Access OTP gate; the app also
+validates Access JWTs so the DO origin URL serves no data directly.
+Deployment specifics (app id, hostname, tokens, redeploy command) live in the
+gitignored `notes/deploy-digitalocean.md`. In-memory state resets on
+restart/redeploy — restart right before demos for a clean ledger.
