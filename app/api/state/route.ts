@@ -12,6 +12,9 @@ export async function GET(req: Request): Promise<Response> {
   const admin = isAdmin(req);
   return Response.json({
     admin,
+    // Tells the chat whether /api/speech and /api/transcribe are live so it
+    // can offer the mic in every browser (vs. the Web Speech fallback).
+    voice: Boolean(process.env.ELEVENLABS_API_KEY),
     refunds: admin ? [...db.refunds].reverse() : [],
     customers: db.customers.map((c) => ({
       id: c.id,

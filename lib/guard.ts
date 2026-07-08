@@ -6,6 +6,9 @@ import { createPublicKey, timingSafeEqual, verify as cryptoVerify, type KeyObjec
 
 const CHAT_LIMIT = Number(process.env.CHAT_RATE_LIMIT ?? 20); // turns per window
 const CHAT_WINDOW_MS = Number(process.env.CHAT_RATE_WINDOW_SEC ?? 300) * 1000;
+// Voice requests fan out from chat turns (a few TTS segments plus one
+// transcription per spoken turn), so they get their own, roomier bucket.
+const VOICE_LIMIT = Number(process.env.VOICE_RATE_LIMIT ?? CHAT_LIMIT * 8);
 const MAX_TRACKED_IPS = 10_000;
 
 interface Bucket {
@@ -23,19 +26,23 @@ function clientIp(req: Request): string {
   return forwarded?.split(",")[0]?.trim() || "local";
 }
 
-export function checkRateLimit(req: Request): { ok: true } | { ok: false; retryAfterSec: number } {
+export function checkRateLimit(
+  req: Request,
+  scope: "chat" | "voice" = "chat",
+): { ok: true } | { ok: false; retryAfterSec: number } {
   const now = Date.now();
-  const ip = clientIp(req);
-  const bucket = buckets.get(ip);
+  const key = `${scope}:${clientIp(req)}`;
+  const limit = scope === "voice" ? VOICE_LIMIT : CHAT_LIMIT;
+  const bucket = buckets.get(key);
 
   if (!bucket || now >= bucket.resetAt) {
     if (buckets.size >= MAX_TRACKED_IPS) {
-      for (const [key, b] of buckets) if (now >= b.resetAt) buckets.delete(key);
+      for (const [k, b] of buckets) if (now >= b.resetAt) buckets.delete(k);
     }
-    buckets.set(ip, { count: 1, resetAt: now + CHAT_WINDOW_MS });
+    buckets.set(key, { count: 1, resetAt: now + CHAT_WINDOW_MS });
     return { ok: true };
   }
-  if (bucket.count < CHAT_LIMIT) {
+  if (bucket.count < limit) {
     bucket.count++;
     return { ok: true };
   }

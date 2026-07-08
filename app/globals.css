@@ -403,6 +403,13 @@ button {
   }
 }
 
+/* Recording stopped, transcript in flight — hold the amber but sit still. */
+.composer .mic-btn.transcribing {
+  color: #fff;
+  background: var(--amber);
+  opacity: 0.55;
+}
+
 .composer input {
   flex: 1;
   border: 0;

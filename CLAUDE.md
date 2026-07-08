@@ -5,9 +5,10 @@
 ## Architecture
 
 Next.js app with two surfaces over one in-memory event stream: a customer chat
-(`app/page.tsx`, typed or voice — demo-grade Web Speech API, Chrome only) and
-an admin reasoning console (`app/admin/page.tsx`, light "alpine morning"
-theme). `lib/agent.ts` runs a raw Anthropic tool-calling loop
+(`app/page.tsx`, typed or voice — ElevenLabs TTS/STT via `/api/speech` +
+`/api/transcribe` when `ELEVENLABS_API_KEY` is set, any browser; Web Speech
+fallback otherwise) and an admin reasoning console (`app/admin/page.tsx`,
+light "alpine morning" theme). `lib/agent.ts` runs a raw Anthropic tool-calling loop
 (`claude-opus-4-8`, streaming, own retry loop so attempts are visible in the
 trace). All refund decisions come from `lib/policy.ts`, a deterministic engine;
 `process_refund` re-runs it server-side, so the model cannot approve outside
@@ -36,7 +37,11 @@ See README for the full file map and demo scenarios.
 
 - `bin/dev up` serves in Docker on port 3000. Running `npm run dev` on the host
   at the same time lands on 3001 with a *separate* in-memory ledger/trace —
-  easy to stare at the wrong server's empty admin console.
+  easy to stare at the wrong server's empty admin console. Worse: the repo is
+  bind-mounted into the container, so a host `npm run dev` *or* `npm run build`
+  clobbers the container's `.next` — the 3001 page loops on `[Fast Refresh]
+  rebuilding` and 3000 starts 404ing routes. Recover with
+  `rm -rf .next && bin/dev restart`.
 - `.env.local` is optional in docker-compose (`required: false`), so the
   container starts fine without an API key and only fails when the agent is
   invoked. Recreate (not just restart) the container after changing env.
@@ -64,8 +69,9 @@ See README for the full file map and demo scenarios.
 ## Status
 
 Feature-complete and verified end-to-end with a live key: approve / deny /
-escalate / hold-the-line / chaos-retry all pass, plus demo-grade voice mode
-(mic button, Web Speech API). Published at
+escalate / hold-the-line / chaos-retry all pass, plus voice mode (mic button;
+realistic ElevenLabs voice in any browser with a key, Web Speech fallback
+without). Published at
 https://github.com/scrappergus/northwind-refunds-agent and deployed to
 DigitalOcean App Platform (production Dockerfile, standalone build) behind a
 Cloudflare-proxied domain with a Cloudflare Access OTP gate; the app also

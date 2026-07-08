@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { cleanForSpeech, Recorder, Speaker } from "@/lib/speech";
 
 interface Persona {
   id: string;
@@ -59,14 +60,8 @@ function getRecognitionCtor(): SpeechRecognitionCtor | undefined {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
-// Strip markdown/emoji so the synthesized voice doesn't read "asterisk asterisk".
-function cleanForSpeech(text: string): string {
-  return text
-    .replace(/[*_`#]/g, "")
-    .replace(/\p{Extended_Pictographic}/gu, "")
-    .trim();
-}
-
+// Keyless-dev fallback voice (window.speechSynthesis); the real path speaks
+// through /api/speech via the Speaker queue.
 function speak(text: string) {
   const clean = cleanForSpeech(text);
   if (!clean || !("speechSynthesis" in window)) return;
@@ -86,17 +81,33 @@ export default function ChatPage() {
   const [activity, setActivity] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(false);
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  // True when the server has an ElevenLabs key: mic + voice go through
+  // /api/transcribe and /api/speech (any browser). False → Web Speech
+  // fallback so keyless local dev keeps a voice mode in Chrome.
+  const [serverVoice, setServerVoice] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const speakerRef = useRef<Speaker | null>(null);
+  const recorderRef = useRef<Recorder | null>(null);
+  const recordCapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    speakerRef.current = new Speaker();
+    recorderRef.current = new Recorder();
     fetch("/api/state")
       .then((r) => r.json())
-      .then((d) => setPersonas(d.customers ?? []))
+      .then((d) => {
+        setPersonas(d.customers ?? []);
+        const voice = Boolean(d.voice);
+        setServerVoice(voice);
+        setMicSupported(voice ? Recorder.supported() : Boolean(getRecognitionCtor()));
+      })
       .catch(() => setPersonas([]));
-    setMicSupported(Boolean(getRecognitionCtor()));
     return () => {
       recognitionRef.current?.abort();
+      recorderRef.current?.abort();
+      speakerRef.current?.stop();
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -121,6 +132,10 @@ export default function ChatPage() {
 
   function backToPicker() {
     recognitionRef.current?.abort();
+    recorderRef.current?.abort();
+    speakerRef.current?.stop();
+    if (recordCapRef.current) clearTimeout(recordCapRef.current);
+    setListening(false);
     window.speechSynthesis?.cancel();
     setPersona(null);
     setTranscript([]);
@@ -130,8 +145,8 @@ export default function ChatPage() {
   }
 
   // `voice: true` marks a turn that came in through the mic: the agent's reply
-  // segments are then spoken aloud as each one completes (utterances queue up
-  // in the synthesizer, so "Let me check…" plays while tools run).
+  // segments are then spoken aloud as each one completes (segments queue up
+  // in the Speaker, so "Let me check…" plays while tools run).
   async function send(text: string, voice = false) {
     if (!persona || busy || !text.trim()) return;
     const userMessage = text.trim();
@@ -145,7 +160,8 @@ export default function ChatPage() {
       if (!voice) return;
       const segment = agentText.trim();
       if (segment && segment !== lastSpoken) {
-        speak(segment);
+        if (serverVoice) speakerRef.current?.enqueue(segment);
+        else speak(segment);
         lastSpoken = segment;
       }
     };
@@ -233,7 +249,57 @@ export default function ChatPage() {
     }
   }
 
+  // Server voice: tap to record, tap again to send. The recording goes to
+  // /api/transcribe and the text enters the normal send() path as a voice turn.
+  async function finishRecording() {
+    if (recordCapRef.current) clearTimeout(recordCapRef.current);
+    setListening(false);
+    const blob = await recorderRef.current?.stop();
+    if (!blob) return;
+    setTranscribing(true);
+    try {
+      const form = new FormData();
+      form.append("audio", blob, blob.type.includes("mp4") ? "say.mp4" : "say.webm");
+      const res = await fetch("/api/transcribe", { method: "POST", body: form });
+      const text = res.ok ? ((await res.json()).text as string) : "";
+      if (text) {
+        void send(text, true);
+      } else {
+        setTranscript((t) => [
+          ...t,
+          { kind: "agent", text: "[I couldn't make that out — mind trying again?]" },
+        ]);
+      }
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  async function toggleRecorder() {
+    if (listening) {
+      void finishRecording();
+      return;
+    }
+    const speaker = speakerRef.current;
+    speaker?.unlock(); // inside the tap gesture, so Safari allows playback later
+    speaker?.stop(); // don't record our own voice
+    try {
+      // Auto-send once the speaker pauses; finishRecording is idempotent,
+      // so a tap racing the silence detector is harmless.
+      await recorderRef.current?.start(() => void finishRecording());
+    } catch {
+      return; // mic permission denied
+    }
+    setListening(true);
+    // Backstop against silence detection never firing — auto-send after 60s.
+    recordCapRef.current = setTimeout(() => void finishRecording(), 60_000);
+  }
+
   function toggleMic() {
+    if (serverVoice) {
+      void toggleRecorder();
+      return;
+    }
     if (listening) {
       recognitionRef.current?.stop();
       return;
@@ -348,19 +414,24 @@ export default function ChatPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                send(input);
+                // Mid-recording, Send means "I'm done talking" — same path
+                // as the silence detector and the mic tap.
+                if (serverVoice && listening) void finishRecording();
+                else send(input);
               }}
             >
               {micSupported && (
                 <button
                   type="button"
-                  className={`mic-btn ${listening ? "listening" : ""}`}
+                  className={`mic-btn ${listening ? "listening" : ""} ${transcribing ? "transcribing" : ""}`}
                   onClick={toggleMic}
-                  disabled={busy}
-                  aria-label={listening ? "Stop listening" : "Speak your message"}
+                  disabled={busy || transcribing}
+                  aria-label={listening ? "Stop and send" : "Speak your message"}
                   title={
                     listening
-                      ? "Stop listening"
+                      ? serverVoice
+                        ? "Stop and send"
+                        : "Stop listening"
                       : "Speak your message — the agent's reply is read aloud"
                   }
                 >
@@ -379,12 +450,25 @@ export default function ChatPage() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={listening ? "Listening…" : "Write a message…"}
-                disabled={busy || listening}
+                placeholder={
+                  listening
+                    ? serverVoice
+                      ? "Listening — click Done when you're finished (or just pause)…"
+                      : "Listening…"
+                    : transcribing
+                      ? "Transcribing…"
+                      : "Write a message…"
+                }
+                disabled={busy || listening || transcribing}
                 autoFocus
               />
-              <button type="submit" disabled={busy || listening || !input.trim()}>
-                Send
+              <button
+                type="submit"
+                disabled={
+                  busy || transcribing || (listening ? !serverVoice : !input.trim())
+                }
+              >
+                {serverVoice && listening ? "Done" : "Send"}
               </button>
             </form>
           </div>

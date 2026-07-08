@@ -36,11 +36,14 @@ app/api/chat        POST — runs one agent turn, streams SSE frames
 app/api/logs        GET  — live SSE feed for the admin trace
 app/api/state       GET  — decision ledger + customer roster
 app/api/chaos       POST — arm a one-shot simulated CRM outage (failure demo)
+app/api/speech      POST — text → spoken mp3 (ElevenLabs TTS; voice mode)
+app/api/transcribe  POST — recorded audio → text (ElevenLabs Scribe)
 
 lib/agent.ts        The agent loop (raw tool calling on the Anthropic API)
 lib/tools.ts        Tool definitions + executors (6 tools)
 lib/policy.ts       Deterministic refund-policy engine — the source of truth
 lib/store.ts        In-memory event log, decision ledger, SSE pub/sub
+lib/speech.ts       Client voice plumbing: ordered playback queue + mic recorder
 
 data/customers.json    Mock CRM: 15 customers, each mapping to a policy scenario
 data/refund-policy.md  The strict policy document (rule ids R1.1–R6.2)
@@ -86,17 +89,20 @@ The LLM never decides eligibility by itself:
 
 ### Voice mode
 
-The mic button in the chat composer starts a spoken interaction: speech-to-text
-via the browser's Web Speech API (Chrome/Edge), auto-send on a final
-transcript, and the agent's reply segments are read aloud as they complete —
-so "Let me pull up your order…" plays while the tools run. Typed messages stay
-silent.
+The mic button in the chat composer starts a spoken interaction. With an
+`ELEVENLABS_API_KEY` set, it works in any modern browser and sounds like a
+person: the browser records with `MediaRecorder`, `/api/transcribe` runs the
+audio through ElevenLabs Scribe, and the agent's reply segments are synthesized
+by `/api/speech` (ElevenLabs Flash) and played in order as each one completes —
+so "Let me pull up your order…" plays while the tools run. Tap the mic, talk,
+then click Done (or tap the mic again) to send — or just pause: a level meter
+on the stream detects end-of-turn and auto-sends. Typed messages stay silent.
 
-This is deliberately demo-grade: recognition and synthesis run entirely in the
-browser, so there's no server-side audio path. A production voice pipeline
-(OpenAI Realtime, LiveKit, ElevenLabs) would slot in as another producer and
-subscriber on the same agent loop and event stream — the tools and policy
-engine would not change.
+Without a key, the chat falls back to the browser Web Speech API
+(Chrome/Edge only, OS-grade voice) so local dev needs no extra account. Both
+new routes sit behind the same guards as `/api/chat` (Cloudflare Access JWT
+check plus a per-IP rate bucket), and the audio path stays outside the agent
+loop — the tools and policy engine are unchanged.
 
 ## Demo scenarios
 
