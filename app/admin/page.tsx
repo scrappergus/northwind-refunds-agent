@@ -119,6 +119,13 @@ export default function AdminPage() {
         .catch(() => undefined);
     refreshLedger();
 
+    // The armed flag lives server-side; re-sync so a reload (or HMR in dev)
+    // doesn't silently show the button as disarmed while an outage is pending.
+    fetch("/api/chaos")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setChaosArmed(Boolean(d.armed)))
+      .catch(() => undefined);
+
     const es = new EventSource("/api/logs");
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
@@ -136,7 +143,14 @@ export default function AdminPage() {
         }
         setEvents((prev) => [...prev.slice(-1500), frame.event]);
         if (frame.event.type === "decision") refreshLedger();
-        if (frame.event.type === "tool_error") setChaosArmed(false);
+        if (frame.event.type === "tool_error") {
+          setChaosArmed(false);
+          // Don't let a filter hide the failure: if the trace is pinned to a
+          // different conversation, jump to the one that just errored.
+          setConvFilter((f) =>
+            f !== "all" && f !== frame.event.conversationId ? frame.event.conversationId : f,
+          );
+        }
       }
     };
     return () => es.close();
