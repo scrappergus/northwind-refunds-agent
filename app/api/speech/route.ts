@@ -52,9 +52,11 @@ export async function POST(req: Request): Promise<Response> {
       headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         text: text.trim(),
-        // Flash keeps latency conversational; quality is still far beyond
-        // the OS-voice speechSynthesis it replaces.
-        model_id: "eleven_flash_v2_5",
+        // Turbo is the artifact/latency sweet spot (same credit cost as
+        // Flash). Override with ELEVENLABS_MODEL_ID, e.g. eleven_flash_v2_5
+        // for ~75ms synthesis or eleven_multilingual_v2 for top quality at
+        // double the credits.
+        model_id: process.env.ELEVENLABS_MODEL_ID || "eleven_turbo_v2_5",
       }),
     },
   );
